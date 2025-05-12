@@ -15,7 +15,6 @@ import { Bell, Lock, CreditCard, Link2, Twitter, Instagram, Camera } from "lucid
 import { useToast } from "@/hooks/use-toast"
 import { useTheme } from "@/contexts/theme-context"
 import { STORAGE_BUCKETS, uploadToStorage } from "@/lib/supabase"
-import { playSound, SOUNDS, toggleSounds, areSoundsEnabled } from "@/lib/sound-utils"
 
 // Mock data for profile
 const mockProfile = {
@@ -145,24 +144,24 @@ export default function ProfileComponent({ username }: { username?: string }) {
   // Initialize sounds enabled state
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setSoundsEnabled(areSoundsEnabled())
+      // setSoundsEnabled(areSoundsEnabled())
     }
   }, [])
 
   // Handle click with sound
   const handleClick = () => {
-    playSound(SOUNDS.CLICK, 0.3)
+    // playSound(SOUNDS.CLICK, 0.3)
   }
 
   const handleEditToggle = () => {
-    handleClick()
+    // handleClick()
     if (isEditing) {
       // Save changes
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated.",
       })
-      playSound(SOUNDS.SUCCESS, 0.5)
+      // playSound(SOUNDS.SUCCESS, 0.5)
     }
     setIsEditing(!isEditing)
   }
@@ -173,7 +172,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
   }
 
   const handleThemeChange = (newTheme: string) => {
-    handleClick()
+    // handleClick()
     setTheme(newTheme as any)
     toast({
       title: "Theme Updated",
@@ -182,15 +181,15 @@ export default function ProfileComponent({ username }: { username?: string }) {
   }
 
   const handleSoundsToggle = () => {
-    const enabled = toggleSounds()
-    setSoundsEnabled(enabled)
-    if (enabled) {
-      playSound(SOUNDS.SUCCESS, 0.5)
-    }
-    toast({
-      title: enabled ? "Sounds Enabled" : "Sounds Disabled",
-      description: enabled ? "UI sounds have been turned on." : "UI sounds have been turned off.",
-    })
+    // const enabled = toggleSounds()
+    // setSoundsEnabled(enabled)
+    // if (enabled) {
+    //   playSound(SOUNDS.SUCCESS, 0.5)
+    // }
+    // toast({
+    //   title: enabled ? "Sounds Enabled" : "Sounds Disabled",
+    //   description: enabled ? "UI sounds have been turned on." : "UI sounds have been turned off.",
+    // })
   }
 
   const handleFileUpload = async (
@@ -202,7 +201,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
     if (!file) return
 
     setIsUploading(true)
-    handleClick()
+    // handleClick()
 
     try {
       // Generate a unique file path
@@ -232,7 +231,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
         title: "Upload Successful",
         description: `Your ${type} has been uploaded successfully.`,
       })
-      playSound(SOUNDS.SUCCESS, 0.5)
+      // playSound(SOUNDS.SUCCESS, 0.5)
     } catch (error) {
       console.error("Upload error:", error)
       toast({
@@ -240,7 +239,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
         description: "There was an error uploading your file. Please try again.",
         variant: "destructive",
       })
-      playSound(SOUNDS.ERROR, 0.5)
+      // playSound(SOUNDS.ERROR, 0.5)
     } finally {
       setIsUploading(false)
     }
@@ -270,7 +269,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
                 size="icon"
                 className="absolute bottom-0 right-0 bg-black/20 hover:bg-black/40 rounded-full h-8 w-8"
                 onClick={() => {
-                  handleClick()
+                  // handleClick()
                   avatarInputRef.current?.click()
                 }}
               >
@@ -299,7 +298,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
                 size="sm"
                 className="button-with-sound"
                 onClick={() => {
-                  handleClick()
+                  // handleClick()
                   bannerInputRef.current?.click()
                 }}
               >
@@ -327,7 +326,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
           value={activeTab}
           onValueChange={(value) => {
             setActiveTab(value)
-            handleClick()
+            // handleClick()
           }}
           className="w-full"
         >
@@ -420,7 +419,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
                   </CardContent>
                   {mockAchievements.length > 5 && (
                     <CardFooter>
-                      <Button variant="outline" size="sm" className="w-full button-with-sound" onClick={handleClick}>
+                      <Button variant="outline" size="sm" className="w-full button-with-sound" onClick={() => {}}>
                         View All
                       </Button>
                     </CardFooter>
@@ -464,7 +463,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
                           <TabsTrigger
                             value="appearance"
                             className="w-full justify-start px-4 py-2 h-auto button-with-sound"
-                            onClick={handleClick}
+                            onClick={() => {}}
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -486,7 +485,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
                           <TabsTrigger
                             value="notifications"
                             className="w-full justify-start px-4 py-2 h-auto button-with-sound"
-                            onClick={handleClick}
+                            onClick={() => {}}
                           >
                             <Bell className="h-4 w-4 mr-2" />
                             Notifications
@@ -494,7 +493,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
                           <TabsTrigger
                             value="privacy"
                             className="w-full justify-start px-4 py-2 h-auto button-with-sound"
-                            onClick={handleClick}
+                            onClick={() => {}}
                           >
                             <Lock className="h-4 w-4 mr-2" />
                             Privacy
@@ -502,7 +501,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
                           <TabsTrigger
                             value="payment"
                             className="w-full justify-start px-4 py-2 h-auto button-with-sound"
-                            onClick={handleClick}
+                            onClick={() => {}}
                           >
                             <CreditCard className="h-4 w-4 mr-2" />
                             Payment Methods
@@ -510,7 +509,7 @@ export default function ProfileComponent({ username }: { username?: string }) {
                           <TabsTrigger
                             value="connected"
                             className="w-full justify-start px-4 py-2 h-auto button-with-sound"
-                            onClick={handleClick}
+                            onClick={() => {}}
                           >
                             <Link2 className="h-4 w-4 mr-2" />
                             Connected Accounts
@@ -553,16 +552,16 @@ export default function ProfileComponent({ username }: { username?: string }) {
                                       Button clicks and interface sounds
                                     </div>
                                   </div>
-                                  <Switch checked={soundsEnabled} onCheckedChange={handleSoundsToggle} />
+                                  <Switch checked={soundsEnabled} onCheckedChange={() => {}} />
                                 </div>
                               </div>
                             </div>
 
                             <div className="flex justify-end gap-2 mt-6">
-                              <Button variant="outline" className="button-with-sound" onClick={handleClick}>
+                              <Button variant="outline" className="button-with-sound" onClick={() => {}}>
                                 Reset to Default
                               </Button>
-                              <Button className="button-with-sound" onClick={handleClick}>
+                              <Button className="button-with-sound" onClick={() => {}}>
                                 Save Changes
                               </Button>
                             </div>

@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Users, MessageSquare, Search, Headphones, ChevronRight, ThumbsUp, ThumbsDown } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
-import { playSound, SOUNDS, preloadSounds } from "@/lib/sound-utils"
 
 export function ChillHubComponent() {
   const { theme } = useTheme()
@@ -127,20 +126,10 @@ export function ChillHubComponent() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Preload sounds on component mount
-  useEffect(() => {
-    preloadSounds()
-
-    // Create audio element for click sound
-    if (typeof window !== "undefined") {
-      const audio = new Audio("/sounds/click.mp3")
-      setAudioElement(audio)
-    }
-  }, [])
+  useEffect(() => {}, [])
 
   // Handle click with sound
-  const handleClick = () => {
-    playSound(SOUNDS.CLICK, 0.3)
-  }
+  const handleClick = () => {}
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -158,7 +147,6 @@ export function ChillHubComponent() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
-    handleClick()
     if (messageInput.trim()) {
       setMessages([
         ...messages,
@@ -177,7 +165,6 @@ export function ChillHubComponent() {
   }
 
   const handleReaction = (messageId: number, type: "likes" | "dislikes") => {
-    handleClick()
     setMessages(
       messages.map((msg) => {
         if (msg.id === messageId) {
@@ -191,7 +178,6 @@ export function ChillHubComponent() {
   }
 
   const toggleFriend = (userId: number) => {
-    handleClick()
     setOnlineUsers(
       onlineUsers.map((user) => {
         if (user.id === userId) {
@@ -301,7 +287,6 @@ export function ChillHubComponent() {
                       className="w-full justify-start"
                       onClick={() => {
                         setActiveChat(room.id)
-                        handleClick()
                       }}
                     >
                       <div className="flex items-center w-full">
@@ -323,7 +308,7 @@ export function ChillHubComponent() {
                 ))}
               </ScrollArea>
               <div className="p-4 border-t border-border/40">
-                <Button className={`w-full bg-primary ${themeStyles.buttonHover}`} onClick={handleClick}>
+                <Button className={`w-full bg-primary ${themeStyles.buttonHover}`}>
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Create Room
                 </Button>
@@ -352,7 +337,6 @@ export function ChillHubComponent() {
                 value={activeTab}
                 onValueChange={(value) => {
                   setActiveTab(value)
-                  handleClick()
                 }}
               >
                 <TabsList className="grid w-full grid-cols-2">
@@ -451,9 +435,7 @@ export function ChillHubComponent() {
                       <h3 className="text-lg font-semibold mb-2">Voice Chat</h3>
                       <p className="text-muted-foreground">Connect with other gamers using voice chat</p>
                     </div>
-                    <Button className={`mb-2 bg-primary ${themeStyles.buttonHover}`} onClick={handleClick}>
-                      Join Voice Chat
-                    </Button>
+                    <Button className={`mb-2 bg-primary ${themeStyles.buttonHover}`}>Join Voice Chat</Button>
                     <p className="text-xs text-muted-foreground">Make sure your microphone is connected and working</p>
                   </div>
                 </TabsContent>
@@ -552,7 +534,7 @@ export function ChillHubComponent() {
                     />
                   </div>
                   <div className="flex justify-center space-x-2 mt-3">
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleClick}>
+                    <Button variant="outline" size="icon" className="h-8 w-8">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
@@ -573,7 +555,6 @@ export function ChillHubComponent() {
                       className="h-8 w-8"
                       onClick={() => {
                         setIsPlaying(!isPlaying)
-                        handleClick()
                       }}
                     >
                       {isPlaying ? (
@@ -605,7 +586,7 @@ export function ChillHubComponent() {
                         </svg>
                       )}
                     </Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleClick}>
+                    <Button variant="outline" size="icon" className="h-8 w-8">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
@@ -634,7 +615,7 @@ export function ChillHubComponent() {
                 <div className="text-center">
                   <h3 className="font-bold text-lg mb-2">Upgrade to K-Clash Pro</h3>
                   <p className="text-sm mb-4 opacity-90">Get exclusive access to premium features and tournaments</p>
-                  <Button variant="secondary" className="w-full" onClick={handleClick}>
+                  <Button variant="secondary" className="w-full">
                     Upgrade Now
                   </Button>
                 </div>
