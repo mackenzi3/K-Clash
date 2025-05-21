@@ -10,24 +10,16 @@ export const SOUNDS = {
 // Track if sounds are enabled
 let soundsEnabled = true
 
-// Initialize audio context
-let audioContext: AudioContext | null = null
-
 // Initialize audio elements
 const audioElements: { [key: string]: HTMLAudioElement } = {}
 
 /**
- * Initialize the audio context (must be called after user interaction)
+ * Preload sounds for better performance
  */
-export function initAudio() {
-  if (typeof window === "undefined") return
+export function preloadSounds() {
+  if (typeof window === "undefined") return false
 
   try {
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    }
-
-    // Pre-load sound files
     Object.entries(SOUNDS).forEach(([key, path]) => {
       if (!audioElements[key]) {
         const audio = new Audio(path)
@@ -35,10 +27,9 @@ export function initAudio() {
         audioElements[key] = audio
       }
     })
-
     return true
   } catch (error) {
-    console.error("Failed to initialize audio:", error)
+    console.error("Failed to preload sounds:", error)
     return false
   }
 }
@@ -50,12 +41,6 @@ export function playSound(soundPath: string, volume = 1.0) {
   if (!soundsEnabled || typeof window === "undefined") return
 
   try {
-    // Initialize audio if not already done
-    if (!audioContext) {
-      const initialized = initAudio()
-      if (!initialized) return
-    }
-
     // Use cached audio element if available
     const soundKey = Object.entries(SOUNDS).find(([_, path]) => path === soundPath)?.[0]
 

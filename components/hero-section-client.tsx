@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button"
 import { getLandingContentClient } from "@/lib/landing-data"
 import { useEffect, useState } from "react"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export function HeroSectionClient() {
   const [data, setData] = useState<{
@@ -10,14 +12,18 @@ export function HeroSectionClient() {
     stats: any[]
   } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchData() {
       try {
+        setLoading(true)
+        setError(null)
         const landingData = await getLandingContentClient()
         setData(landingData)
       } catch (error) {
         console.error("Error fetching landing data:", error)
+        setError("Failed to load content. Please try refreshing the page.")
       } finally {
         setLoading(false)
       }
@@ -27,11 +33,52 @@ export function HeroSectionClient() {
   }, [])
 
   if (loading) {
-    return <div className="py-12 md:py-16 text-center">Loading...</div>
+    return (
+      <section className="relative overflow-hidden bg-gradient-to-b from-background to-background/80 py-12 md:py-16">
+        <div className="container relative px-4 md:px-6">
+          <div className="flex items-center justify-center min-h-[300px]">
+            <div className="animate-pulse flex flex-col items-center space-y-4 w-full max-w-md">
+              <div className="h-8 bg-muted rounded w-3/4"></div>
+              <div className="h-4 bg-muted rounded w-full"></div>
+              <div className="h-4 bg-muted rounded w-5/6"></div>
+              <div className="flex space-x-4 w-full justify-center mt-4">
+                <div className="h-10 bg-muted rounded w-32"></div>
+                <div className="h-10 bg-muted rounded w-32"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section className="relative overflow-hidden bg-gradient-to-b from-background to-background/80 py-12 md:py-16">
+        <div className="container relative px-4 md:px-6">
+          <Alert variant="destructive" className="max-w-md mx-auto">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      </section>
+    )
   }
 
   if (!data) {
-    return <div className="py-12 md:py-16 text-center">Failed to load content</div>
+    return (
+      <section className="relative overflow-hidden bg-gradient-to-b from-background to-background/80 py-12 md:py-16">
+        <div className="container relative px-4 md:px-6 text-center">
+          <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
+            Welcome to K-Clash
+          </h1>
+          <p className="mt-4 max-w-[600px] mx-auto text-muted-foreground md:text-xl">
+            Kenya's premier gaming platform for competitive battles and community
+          </p>
+        </div>
+      </section>
+    )
   }
 
   const { hero, stats } = data

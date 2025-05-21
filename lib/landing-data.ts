@@ -97,6 +97,14 @@ export async function getLandingContent() {
     // Use the appropriate Supabase client based on the execution context
     const supabase = typeof window === "undefined" ? getServerSupabaseClient() : getBrowserSupabaseClient()
 
+    if (!supabase) {
+      return {
+        hero: fallbackHero,
+        features: fallbackFeatures,
+        stats: fallbackStats,
+      }
+    }
+
     const { data: landingContent, error: landingError } = await supabase
       .from("landing_content")
       .select("*")
@@ -130,6 +138,14 @@ export async function getLandingContent() {
 export async function getLandingContentClient() {
   try {
     const supabase = getBrowserSupabaseClient()
+
+    if (!supabase) {
+      return {
+        hero: fallbackHero,
+        features: fallbackFeatures,
+        stats: fallbackStats,
+      }
+    }
 
     const { data: landingContent, error: landingError } = await supabase
       .from("landing_content")

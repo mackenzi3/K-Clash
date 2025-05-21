@@ -5,14 +5,11 @@ import type { Database } from "@/types/supabase"
 let browserSupabaseClient: ReturnType<typeof createClient> | null = null
 let serverSupabaseClient: ReturnType<typeof createClient> | null = null
 
-/**
- * Gets the Supabase URL and anon key from environment variables
- */
-function getSupabaseCredentials() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-
-  return { url, anonKey }
+// Storage bucket constants
+export const STORAGE_BUCKETS = {
+  AVATARS: "avatars",
+  VIDEOS: "videos",
+  POSTS: "posts",
 }
 
 /**
@@ -21,7 +18,8 @@ function getSupabaseCredentials() {
 export function getBrowserSupabaseClient() {
   if (browserSupabaseClient) return browserSupabaseClient
 
-  const { url, anonKey } = getSupabaseCredentials()
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 
   if (!url || !anonKey) {
     console.error("Missing Supabase credentials")
@@ -44,7 +42,8 @@ export function getBrowserSupabaseClient() {
 export function getServerSupabaseClient() {
   if (serverSupabaseClient) return serverSupabaseClient
 
-  const { url, anonKey } = getSupabaseCredentials()
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 
   if (!url || !anonKey) {
     console.error("Missing Supabase credentials")
@@ -60,6 +59,10 @@ export function getServerSupabaseClient() {
   return serverSupabaseClient
 }
 
+// For backwards compatibility
+export const createBrowserSupabaseClient = getBrowserSupabaseClient
+export const createServerSupabaseClient = getServerSupabaseClient
+
 /**
  * Tests the Supabase connection
  */
@@ -74,7 +77,6 @@ export async function testSupabaseConnection(isServer = false) {
       }
     }
 
-    // Try a simple query
     const { error } = await supabase.from("profiles").select("count", { count: "exact", head: true })
 
     if (error) {
@@ -102,22 +104,39 @@ export async function testSupabaseConnection(isServer = false) {
 }
 
 /**
- * Handles Supabase errors
+ * Gets the public URL for a file in Supabase storage
  */
-export function handleSupabaseError(error: unknown, fallbackMessage = "An error occurred"): string {
-  if (!error) return fallbackMessage
+export function getStorageUrl(bucket: string, path: string): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+  return `${url}/storage/v1/object/public/${bucket}/${path}`
+}
 
-  if (typeof error === "object" && error !== null && "message" in error) {
-    return error.message as string
+/**
+ * Uploads a file to Supabase storage
+ */
+export async function uploadToStorage(
+  bucket: string,
+  path: string,
+  file: File,
+  options?: { contentType?: string; upsert?: boolean },
+) {
+  const supabase = getBrowserSupabaseClient()
+  if (!supabase) return { error: { message: "Supabase client not initialized" } }
+
+  try {
+    const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
+      contentType: options?.contentType,
+      upsert: options?.upsert ?? false,
+    })
+
+    if (error) {
+      console.error(`Error uploading to ${bucket}/${path}:`, error)
+      return { error }
+    }
+
+    return { data, url: getStorageUrl(bucket, path) }
+  } catch (error) {
+    console.error(`Exception uploading to ${bucket}/${path}:`, error)
+    return { error: { message: error instanceof Error ? error.message : "Unknown error" } }
   }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  if (typeof error === "string") {
-    return error
-  }
-
-  return fallbackMessage
 }
