@@ -1,74 +1,96 @@
-// Sound utility functions for K-Clash platform
-// This version maintains compatibility with existing code while disabling actual sound functionality
-
-// Define sound types
+// Sound constants
 export const SOUNDS = {
-  CLICK: "click",
-  HOVER: "hover",
-  SUCCESS: "success",
-  ERROR: "error",
-  NOTIFICATION: "notification",
+  CLICK: "/sounds/click.mp3",
+  HOVER: "/sounds/hover.mp3",
+  SUCCESS: "/sounds/success.mp3",
+  ERROR: "/sounds/error.mp3",
+  NOTIFICATION: "/sounds/notification.mp3",
 }
 
-// Sound state management
-let soundsEnabled = false
+// Track if sounds are enabled
+let soundsEnabled = true
+
+// Initialize audio context
+let audioContext: AudioContext | null = null
+
+// Initialize audio elements
+const audioElements: { [key: string]: HTMLAudioElement } = {}
 
 /**
- * Play a sound if available
- * @param soundName The name of the sound to play
+ * Initialize the audio context (must be called after user interaction)
  */
-export const playSound = (soundName: string) => {
-  // No-op function to prevent errors
-  return
+export function initAudio() {
+  if (typeof window === "undefined") return
+
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    }
+
+    // Pre-load sound files
+    Object.entries(SOUNDS).forEach(([key, path]) => {
+      if (!audioElements[key]) {
+        const audio = new Audio(path)
+        audio.preload = "auto"
+        audioElements[key] = audio
+      }
+    })
+
+    return true
+  } catch (error) {
+    console.error("Failed to initialize audio:", error)
+    return false
+  }
 }
 
 /**
- * Play a sound if sounds are enabled
- * @param soundName The name of the sound to play
- * @param isEnabled Override for sound enabled state
+ * Play a sound with the given volume
  */
-export const playSoundIfEnabled = (soundName: string, isEnabled = true) => {
-  // No-op function to prevent errors
-  return
+export function playSound(soundPath: string, volume = 1.0) {
+  if (!soundsEnabled || typeof window === "undefined") return
+
+  try {
+    // Initialize audio if not already done
+    if (!audioContext) {
+      const initialized = initAudio()
+      if (!initialized) return
+    }
+
+    // Use cached audio element if available
+    const soundKey = Object.entries(SOUNDS).find(([_, path]) => path === soundPath)?.[0]
+
+    if (soundKey && audioElements[soundKey]) {
+      const audio = audioElements[soundKey]
+      audio.volume = volume
+      audio.currentTime = 0
+      audio.play().catch((err) => console.error("Error playing sound:", err))
+      return
+    }
+
+    // Otherwise create a new audio element
+    const audio = new Audio(soundPath)
+    audio.volume = volume
+    audio.play().catch((err) => console.error("Error playing sound:", err))
+  } catch (error) {
+    console.error("Failed to play sound:", error)
+  }
 }
 
 /**
- * Preload sounds for better performance
+ * Toggle sounds on/off
  */
-export const preloadSounds = () => {
-  // No-op function to prevent errors
-  return
+export function toggleSound() {
+  soundsEnabled = !soundsEnabled
+  return soundsEnabled
 }
 
 /**
  * Check if sounds are enabled
- * @returns Boolean indicating if sounds are enabled
  */
-export const isSoundEnabled = () => {
-  // Always return false since we're disabling sounds
+export function isSoundEnabled() {
   return soundsEnabled
 }
 
-/**
- * For backward compatibility
- */
-export const areSoundsEnabled = isSoundEnabled
-
-/**
- * Toggle sound enabled state
- * @param newState Optional new state, toggles current state if not provided
- * @returns New sound enabled state
- */
-export const toggleSound = (newState?: boolean) => {
-  if (typeof newState === "boolean") {
-    soundsEnabled = newState
-  } else {
-    soundsEnabled = !soundsEnabled
-  }
-  return soundsEnabled
-}
-
-/**
- * For backward compatibility
- */
+// Aliases for compatibility
 export const toggleSounds = toggleSound
+export const areSoundsEnabled = isSoundEnabled

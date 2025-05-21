@@ -1,109 +1,123 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
-import { getEnvVariable } from "./env-utils"
 
-// Initialize the Supabase client with environment variables
-const supabaseUrl = getEnvVariable("NEXT_PUBLIC_SUPABASE_URL") || ""
-const supabaseAnonKey = getEnvVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY") || ""
-
-// Validate environment variables
-if (!supabaseUrl) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
-}
-
-if (!supabaseAnonKey) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable")
-}
-
-// Create a singleton instance for the browser
-let browserSupabase: ReturnType<typeof createClient> | null = null
+// Cache for Supabase clients
+let browserSupabaseClient: ReturnType<typeof createClient> | null = null
+let serverSupabaseClient: ReturnType<typeof createClient> | null = null
 
 /**
- * Gets or creates a Supabase client for browser environments
+ * Gets the Supabase URL and anon key from environment variables
+ */
+function getSupabaseCredentials() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+
+  return { url, anonKey }
+}
+
+/**
+ * Creates a Supabase client for the browser
  */
 export function getBrowserSupabaseClient() {
-  if (typeof window === "undefined") {
-    console.warn("getBrowserSupabaseClient called in a server context")
+  if (browserSupabaseClient) return browserSupabaseClient
+
+  const { url, anonKey } = getSupabaseCredentials()
+
+  if (!url || !anonKey) {
+    console.error("Missing Supabase credentials")
     return null
   }
 
-  if (!browserSupabase && supabaseUrl && supabaseAnonKey) {
-    browserSupabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    })
-  }
+  browserSupabaseClient = createClient<Database>(url, anonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  })
 
-  return browserSupabase
+  return browserSupabaseClient
 }
 
 /**
- * Creates a new Supabase client for server environments
+ * Creates a Supabase client for the server
  */
 export function getServerSupabaseClient() {
-  if (typeof window !== "undefined") {
-    console.warn("getServerSupabaseClient called in a browser context")
-    return getBrowserSupabaseClient()
+  if (serverSupabaseClient) return serverSupabaseClient
+
+  const { url, anonKey } = getSupabaseCredentials()
+
+  if (!url || !anonKey) {
+    console.error("Missing Supabase credentials")
+    return null
   }
 
-  if (supabaseUrl && supabaseAnonKey) {
-    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-      },
-    })
-  }
+  serverSupabaseClient = createClient<Database>(url, anonKey, {
+    auth: {
+      persistSession: false,
+    },
+  })
 
-  console.error("Failed to create Supabase client: Missing environment variables")
-  return null
-}
-
-// For backwards compatibility
-export const createBrowserSupabaseClient = getBrowserSupabaseClient
-export const createServerSupabaseClient = getServerSupabaseClient
-
-// Storage bucket helpers
-export const STORAGE_BUCKETS = {
-  AVATARS: "avatars",
-  VIDEOS: "videos",
-  POSTS: "posts",
+  return serverSupabaseClient
 }
 
 /**
- * Gets the public URL for a file in Supabase storage
+ * Tests the Supabase connection
  */
-export function getStorageUrl(bucket: string, path: string): string {
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`
-}
-
-/**
- * Uploads a file to Supabase storage
- */
-export async function uploadToStorage(
-  bucket: string,
-  path: string,
-  file: File,
-  options?: { contentType?: string; upsert?: boolean },
-) {
-  const supabase = getBrowserSupabaseClient()
-  if (!supabase) return { error: { message: "Supabase client not initialized" } }
-
+export async function testSupabaseConnection(isServer = false) {
   try {
-    const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
-      contentType: options?.contentType,
-      upsert: options?.upsert ?? false,
-    })
+    const supabase = isServer ? getServerSupabaseClient() : getBrowserSupabaseClient()
 
-    if (error) {
-      console.error(`Error uploading to ${bucket}/${path}:`, error)
-      return { error }
+    if (!supabase) {
+      return {
+        success: false,
+        error: "Supabase client not initialized. Check your environment variables.",
+      }
     }
 
-    return { data, url: getStorageUrl(bucket, path) }
+    // Try a simple query
+    const { error } = await supabase.from("profiles").select("count", { count: "exact", head: true })
+
+    if (error) {
+      if (error.message && error.message.includes("does not exist")) {
+        return {
+          success: false,
+          error: "Table 'profiles' does not exist. You may need to run migrations.",
+          isMissingTable: true,
+        }
+      }
+
+      return {
+        success: false,
+        error: `Database query error: ${error.message}`,
+      }
+    }
+
+    return { success: true }
   } catch (error) {
-    console.error(`Exception uploading to ${bucket}/${path}:`, error)
-    return { error: { message: error instanceof Error ? error.message : "Unknown error" } }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
   }
+}
+
+/**
+ * Handles Supabase errors
+ */
+export function handleSupabaseError(error: unknown, fallbackMessage = "An error occurred"): string {
+  if (!error) return fallbackMessage
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return error.message as string
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === "string") {
+    return error
+  }
+
+  return fallbackMessage
 }
