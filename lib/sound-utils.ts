@@ -1,4 +1,8 @@
-// Sound constants
+/**
+ * Sound utility functions for the K-Clash platform
+ */
+
+// Sound constants - export this as required
 export const SOUNDS = {
   CLICK: "/sounds/click.mp3",
   HOVER: "/sounds/hover.mp3",
@@ -36,6 +40,7 @@ export function preloadSounds() {
 
 /**
  * Play a sound with the given volume
+ * This is the required export
  */
 export function playSound(soundPath: string, volume = 1.0) {
   if (!soundsEnabled || typeof window === "undefined") return
@@ -62,6 +67,18 @@ export function playSound(soundPath: string, volume = 1.0) {
 }
 
 /**
+ * Play a sound if sounds are enabled
+ */
+export function playSoundIfEnabled(soundName: string, isEnabled = true) {
+  if (!isEnabled && !soundsEnabled) return
+
+  const soundPath = SOUNDS[soundName as keyof typeof SOUNDS]
+  if (soundPath) {
+    playSound(soundPath)
+  }
+}
+
+/**
  * Toggle sounds on/off
  */
 export function toggleSound() {
@@ -76,6 +93,6 @@ export function isSoundEnabled() {
   return soundsEnabled
 }
 
-// Aliases for compatibility
+// Aliases for compatibility - these are required exports
 export const toggleSounds = toggleSound
 export const areSoundsEnabled = isSoundEnabled

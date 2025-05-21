@@ -2,137 +2,121 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, AlertTriangle, RefreshCw, Loader2 } from "lucide-react"
-import { testSupabaseConnection } from "@/lib/supabase"
-import { checkSupabaseConfig, getEnvVariable } from "@/lib/env-check"
+import { Button } from "@/components/ui/button"
+import { CheckCircle, AlertCircle, Database } from "lucide-react"
+import { getSupabaseClientSync } from "@/lib/supabase-utils"
 
 export function DatabaseConnectionTest() {
   const [isLoading, setIsLoading] = useState(true)
-  const [isRetrying, setIsRetrying] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<"loading" | "connected" | "error">("loading")
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [configStatus, setConfigStatus] = useState<{ isValid: boolean; error?: string }>({ isValid: true })
+  const [connectionStatus, setConnectionStatus] = useState<{
+    success: boolean
+    error?: string
+    isMissingTable?: boolean
+  } | null>(null)
 
-  useEffect(() => {
-    checkConnection()
-  }, [isRetrying])
-
-  const checkConnection = async () => {
+  const testConnection = async () => {
     setIsLoading(true)
-    setConnectionStatus("loading")
-    setErrorMessage(null)
-
-    // First check if environment variables are configured
-    const config = checkSupabaseConfig()
-    setConfigStatus(config)
-
-    if (!config.isValid) {
-      setConnectionStatus("error")
-      setErrorMessage(config.error || "Invalid Supabase configuration")
-      setIsLoading(false)
-      return
-    }
+    setConnectionStatus(null)
 
     try {
-      // Test connection
-      const result = await testSupabaseConnection()
+      const supabase = getSupabaseClientSync()
 
-      if (result.success) {
-        setConnectionStatus("connected")
-      } else {
-        setConnectionStatus("error")
-        setErrorMessage(result.error || "Unknown error connecting to Supabase")
+      if (!supabase) {
+        setConnectionStatus({
+          success: false,
+          error: "Failed to initialize Supabase client. Check your environment variables.",
+        })
+        return
       }
-    } catch (err) {
-      console.error("Error testing connection:", err)
-      setConnectionStatus("error")
-      setErrorMessage(err instanceof Error ? err.message : "Unknown error occurred")
+
+      // Try a simple query to test the connection
+      const { error } = await supabase.from("profiles").select("count", { count: "exact", head: true })
+
+      if (error) {
+        // Check if the error is about missing table
+        if (error.message && error.message.includes("does not exist")) {
+          setConnectionStatus({
+            success: false,
+            error: "Table 'profiles' does not exist. You may need to run migrations.",
+            isMissingTable: true,
+          })
+          return
+        }
+
+        setConnectionStatus({
+          success: false,
+          error: `Database query error: ${error.message}`,
+        })
+        return
+      }
+
+      setConnectionStatus({
+        success: true,
+      })
+    } catch (error) {
+      setConnectionStatus({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      })
     } finally {
       setIsLoading(false)
-      setIsRetrying(false)
     }
   }
 
-  const retryConnection = () => {
-    setIsRetrying(!isRetrying)
-  }
+  useEffect(() => {
+    testConnection()
+  }, [])
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Supabase Connection Test</CardTitle>
-        <CardDescription>Testing connection to your Supabase database</CardDescription>
+        <CardTitle>Database Connection</CardTitle>
+        <CardDescription>Test your connection to the Supabase database</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
-            <div className="flex items-center">
-              <div className="mr-3">
-                {connectionStatus === "loading" ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                ) : connectionStatus === "connected" ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-500" />
-                )}
-              </div>
-              <div>
-                <p className="font-medium">Supabase Connection</p>
-                <p className="text-sm text-muted-foreground">
-                  URL: {getEnvVariable("NEXT_PUBLIC_SUPABASE_URL") || "Not configured"}
-                </p>
-              </div>
-            </div>
-            <Badge
-              variant={
-                connectionStatus === "loading"
-                  ? "outline"
-                  : connectionStatus === "connected"
-                    ? "default"
-                    : "destructive"
-              }
-            >
-              {connectionStatus === "loading"
-                ? "Checking..."
-                : connectionStatus === "connected"
-                  ? "Connected"
-                  : "Error"}
-            </Badge>
+        {isLoading ? (
+          <div className="flex items-center justify-center p-6">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
+        ) : connectionStatus ? (
+          <Alert
+            variant={connectionStatus.success ? "default" : "destructive"}
+            className={
+              connectionStatus.success ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-900" : ""
+            }
+          >
+            {connectionStatus.success ? (
+              <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            <AlertTitle>{connectionStatus.success ? "Connected" : "Connection Failed"}</AlertTitle>
+            <AlertDescription>
+              {connectionStatus.success ? "Successfully connected to the Supabase database." : connectionStatus.error}
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-          {errorMessage && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Connection Error</AlertTitle>
-              <AlertDescription>{errorMessage}</AlertDescription>
-            </Alert>
-          )}
-
-          {connectionStatus === "connected" && (
-            <Alert variant="default" className="bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertTitle>Connection Successful</AlertTitle>
-              <AlertDescription>
-                Successfully connected to your Supabase database. Your application is ready to use.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
+        {connectionStatus?.isMissingTable && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md dark:bg-yellow-900/20 dark:border-yellow-900">
+            <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Database tables not found</h3>
+            <p className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+              It looks like your database is connected, but the required tables are missing. You need to run the
+              database setup to create the necessary tables.
+            </p>
+          </div>
+        )}
       </CardContent>
       <CardFooter>
-        <Button variant="outline" className="w-full" onClick={retryConnection} disabled={isLoading}>
+        <Button onClick={testConnection} disabled={isLoading} className="w-full">
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Testing Connection...
+              <span className="animate-spin mr-2">⟳</span> Testing Connection...
             </>
           ) : (
             <>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Test Connection
+              <Database className="mr-2 h-4 w-4" /> Test Connection Again
             </>
           )}
         </Button>

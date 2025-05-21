@@ -1,26 +1,27 @@
 import { DatabaseConnectionTest } from "@/components/database-connection-test"
-import { SiteLayout } from "@/components/site-layout"
+import { DatabaseSetup } from "@/components/database-setup"
 
 export default function SetupPage() {
   return (
-    <SiteLayout>
-      <div className="container py-12">
-        <h1 className="text-3xl font-bold text-center mb-8">K-Clash Database Setup</h1>
-        <p className="text-center mb-8 text-muted-foreground max-w-2xl mx-auto">
-          This page helps you verify your Supabase connection and set up your database. Make sure your environment
-          variables are correctly configured.
-        </p>
-
-        <div className="mb-8">
-          <DatabaseConnectionTest />
+    <div className="container py-10 space-y-10">
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold">K-Clash Platform Setup</h1>
+          <p className="text-muted-foreground">Complete the following steps to set up your K-Clash platform</p>
         </div>
 
-        <div className="text-center mt-8">
-          <p className="text-sm text-muted-foreground">
-            After confirming your connection is working, run the SQL schema in your Supabase SQL editor.
-          </p>
+        <div className="space-y-8">
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Step 1: Verify Database Connection</h2>
+            <DatabaseConnectionTest />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Step 2: Set Up Database Tables</h2>
+            <DatabaseSetup />
+          </section>
         </div>
       </div>
-    </SiteLayout>
+    </div>
   )
 }

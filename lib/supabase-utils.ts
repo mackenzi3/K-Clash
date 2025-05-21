@@ -1,115 +1,46 @@
+/**
+ * Utility functions for working with Supabase
+ */
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
+import { getBrowserSupabaseClient, getServerSupabaseClient } from "./supabase"
 
 // Cache for Supabase clients
-let browserSupabaseClient: ReturnType<typeof createClient> | null = null
-let serverSupabaseClient: ReturnType<typeof createClient> | null = null
+let supabaseClientSync: ReturnType<typeof createClient> | null = null
 
 /**
- * Gets environment variables with fallbacks
- */
-function getSupabaseCredentials() {
-  // Try different environment variable formats
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ""
-
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ""
-
-  return { url, anonKey }
-}
-
-/**
- * Gets or creates a Supabase client
+ * Gets or creates a Supabase client synchronously
+ * This is a compatibility function for code that expects the old API
  */
 export function getSupabaseClientSync() {
+  if (supabaseClientSync) return supabaseClientSync
+
   try {
-    const isServer = typeof window === "undefined"
-
-    // Return cached client if available
-    if (!isServer && browserSupabaseClient) return browserSupabaseClient
-    if (isServer && serverSupabaseClient) return serverSupabaseClient
-
-    const { url, anonKey } = getSupabaseCredentials()
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 
     if (!url || !anonKey) {
-      throw new Error("Missing Supabase credentials")
+      console.error("Missing Supabase credentials")
+      return null
     }
 
-    const client = createClient<Database>(url, anonKey, {
+    supabaseClientSync = createClient<Database>(url, anonKey, {
       auth: {
-        persistSession: !isServer,
-        autoRefreshToken: !isServer,
+        persistSession: typeof window !== "undefined",
+        autoRefreshToken: typeof window !== "undefined",
       },
     })
 
-    // Cache the client
-    if (isServer) {
-      serverSupabaseClient = client
-    } else {
-      browserSupabaseClient = client
-    }
-
-    return client
+    return supabaseClientSync
   } catch (error) {
-    console.error("Failed to initialize Supabase client:", error)
-    return createFallbackClient()
+    console.error("Error creating Supabase client:", error)
+    return null
   }
 }
-
-/**
- * Creates a fallback client that logs errors instead of crashing
- */
-function createFallbackClient() {
-  const { url, anonKey } = getSupabaseCredentials()
-  const client = createClient<Database>(url || "", anonKey || "")
-
-  // Wrap all methods to catch errors
-  const handler = {
-    get(target: any, prop: string) {
-      const value = target[prop]
-
-      if (typeof value === "function") {
-        return (...args: any[]) => {
-          try {
-            const result = value.apply(target, args)
-
-            // If result is a promise, catch any errors
-            if (result && typeof result.then === "function") {
-              return result.catch((error: any) => {
-                console.error(`Supabase operation failed: ${prop}`, error)
-                return { data: null, error }
-              })
-            }
-
-            return result
-          } catch (error) {
-            console.error(`Supabase operation failed: ${prop}`, error)
-            return { data: null, error }
-          }
-        }
-      }
-
-      // If it's an object, recursively wrap it
-      if (typeof value === "object" && value !== null) {
-        return new Proxy(value, handler)
-      }
-
-      return value
-    },
-  }
-
-  return new Proxy(client, handler)
-}
-
-// For backwards compatibility
-export const createServerSupabaseClient = () => getSupabaseClientSync()
-export const createBrowserSupabaseClient = () => getSupabaseClientSync()
-export const getBrowserSupabaseClient = () => getSupabaseClientSync()
-export const getServerSupabaseClient = () => getSupabaseClientSync()
 
 /**
  * Tests the Supabase connection by performing a simple query
- * @param isServer Whether to use the server client
- * @returns Object containing success status and error message if any
+ * This is a required export
  */
 export async function testSupabaseConnection(isServer = false) {
   try {
@@ -123,14 +54,14 @@ export async function testSupabaseConnection(isServer = false) {
     }
 
     // Try a simple query to test the connection
-    const { error } = await supabase.from("user_profiles").select("count", { count: "exact", head: true })
+    const { error } = await supabase.from("profiles").select("count", { count: "exact", head: true })
 
     if (error) {
       // Check if the error is about missing table
       if (error.message && error.message.includes("does not exist")) {
         return {
           success: false,
-          error: "Table 'user_profiles' does not exist. You may need to run migrations.",
+          error: "Table 'profiles' does not exist. You may need to run migrations.",
           isMissingTable: true,
         }
       }
@@ -154,9 +85,7 @@ export async function testSupabaseConnection(isServer = false) {
 
 /**
  * Handles Supabase errors in a consistent way
- * @param error The error object from Supabase
- * @param fallbackMessage A fallback message if the error is not a Supabase error
- * @returns A user-friendly error message
+ * This is a required export
  */
 export function handleSupabaseError(error: unknown, fallbackMessage = "An error occurred"): string {
   if (!error) return fallbackMessage
@@ -177,4 +106,102 @@ export function handleSupabaseError(error: unknown, fallbackMessage = "An error 
   }
 
   return fallbackMessage
+}
+
+/**
+ * Checks if a table exists in the database
+ */
+export async function checkTableExists(tableName: string, isServer = false): Promise<boolean> {
+  try {
+    const supabase = isServer ? getServerSupabaseClient() : getBrowserSupabaseClient()
+    if (!supabase) return false
+
+    const { error } = await supabase.from(tableName).select("*", { count: "exact", head: true })
+
+    // If the error contains "does not exist", the table doesn't exist
+    if (error && error.message.includes("does not exist")) {
+      return false
+    }
+
+    // If there's another error, we can't determine if the table exists
+    if (error) {
+      console.error(`Error checking if table ${tableName} exists:`, error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error(`Exception checking if table ${tableName} exists:`, error)
+    return false
+  }
+}
+
+/**
+ * Executes a SQL query
+ */
+export async function executeSql(sql: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = getServerSupabaseClient()
+    if (!supabase) {
+      return { success: false, error: "Supabase client not initialized" }
+    }
+
+    const { error } = await supabase.rpc("execute_sql", { sql_query: sql })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
+  }
+}
+
+/**
+ * Formats a Supabase error message for display
+ */
+export function formatSupabaseError(error: unknown): string {
+  if (!error) return "Unknown error"
+
+  if (typeof error === "object" && error !== null) {
+    if ("message" in error) return error.message as string
+    if ("error" in error) return error.error as string
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === "string") {
+    return error
+  }
+
+  return "An unexpected error occurred"
+}
+
+/**
+ * Checks if the current user has admin privileges
+ */
+export async function checkIsAdmin(): Promise<boolean> {
+  try {
+    const supabase = getBrowserSupabaseClient()
+    if (!supabase) return false
+
+    const { data: user } = await supabase.auth.getUser()
+    if (!user || !user.user) return false
+
+    // Check if user has admin role in profiles table
+    const { data, error } = await supabase.from("profiles").select("role").eq("id", user.user.id).single()
+
+    if (error || !data) return false
+
+    return data.role === "admin"
+  } catch (error) {
+    console.error("Error checking admin status:", error)
+    return false
+  }
 }
